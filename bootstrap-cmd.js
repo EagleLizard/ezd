@@ -1,7 +1,7 @@
 
 const bootstrapJs = require('./bootstrap/bootstrap-js');
 
-const {DEFAULT_PROJECT_TYPE, DEFAULT_MAIN_FILE} = require('./constants');
+const { DEFAULT_PROJECT_TYPE, DEFAULT_MAIN_FILE } = require('./constants');
 
 module.exports = {
   command,
@@ -14,7 +14,7 @@ function command(name, cmd) {
   projectType = cmd.project || DEFAULT_PROJECT_TYPE;
   mainFile = cmd.mainFile;
   force = cmd.force;
-  if(!name || typeof name === 'function'){
+  if(!name || typeof name === 'function') {
     throw new Error('--name is a required option');
   }
   switch(projectType) {

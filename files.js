@@ -11,7 +11,7 @@ module.exports = {
 };
 
 function exists(path) {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     fs.access(path, fs.F_OK, err => {
       resolve(!err);
     });
@@ -32,7 +32,7 @@ function clearDir(dir) {
     rimraf(dir, err => {
       if(err) return reject(err);
       resolve();
-    })
+    });
   });
 }
 

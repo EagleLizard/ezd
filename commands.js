@@ -10,11 +10,12 @@ function init(program) {
 }
 
 function bootstrapCmd(program) {
-  let cmd = program
+  let cmd;
+  cmd = program
     .command('bootstrap <project_name>')
     .alias('b')
     .description('Bootstrap a new app');
-  cmd = bootstrap.options(cmd)
+  bootstrap.options(cmd)
     .action(bootstrap.command)
     .on('--help', bootstrap.help);
   return program;
