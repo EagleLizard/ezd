@@ -39,7 +39,6 @@
   "dependencies": {
     "command-line-args": "^5.2.0",
     "commander": "^8.3.0",
-    "ezd": "^0.0.0",
     "source-map-support": "^0.5.20"
   }
 }
