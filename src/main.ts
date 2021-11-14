@@ -1,30 +1,19 @@
 
-import { VALID_ARGS } from './lib/constants';
-import {
-  parseArgs,
-  ParsedArg,
-} from './lib/parse-args/parse-args';
-import { executeRemoveDeps } from './lib/commands/remove-deps';
+import { EzdArgs, parseEzdArgs } from './lib/parse-args/ezd-args';
 import { executeInstallDeps } from './lib/commands/install-dependencies';
+import { executeRemoveDeps } from './lib/commands/remove-deps';
 
 export async function main(argv: string[]) {
-  let parsedArgs: ParsedArg[];
-  parsedArgs = await parseArgs(argv);
-  for(let i = 0; i < parsedArgs.length; ++i) {
-    await executeArg(parsedArgs[i]);
-  }
+  let ezdArgs: EzdArgs;
+  ezdArgs = await parseEzdArgs(argv);
+  await executeArgs(ezdArgs);
 }
 
-async function executeArg(parsedArg: ParsedArg) {
-  console.log(parsedArg.argType);
-  switch(parsedArg.argType) {
-    case VALID_ARGS.REMOVE_DEPENDENCIES:
-      await executeRemoveDeps(parsedArg);
-      break;
-    case VALID_ARGS.BOOTSTRAP:
-      break;
-    case VALID_ARGS.INSTALL_DEPENDENCIES:
-      await executeInstallDeps(parsedArg);
-      break;
+async function executeArgs(ezdArgs: EzdArgs) {
+  if(ezdArgs.REMOVE_DEPENDENCIES !== undefined) {
+    await executeRemoveDeps(ezdArgs.REMOVE_DEPENDENCIES.argParams);
+  }
+  if(ezdArgs.INSTALL_DEPENDENCIES !== undefined) {
+    await executeInstallDeps(ezdArgs.INSTALL_DEPENDENCIES.argParams);
   }
 }

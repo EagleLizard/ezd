@@ -1,10 +1,9 @@
 
 import { Dirent, RmOptions } from 'fs';
 import path from 'path';
-import { rm, rmdir } from 'fs/promises';
+import { rm } from 'fs/promises';
 
-import { checkDir, getDirents, getPathRelativeToCwd } from '../../util/files';
-import { ParsedArg } from '../parse-args/parse-args';
+import { getDirents } from '../../util/files';
 import { DirentError } from '../models/dirent-error';
 
 type RmdOpFn = () => Promise<unknown>;
@@ -24,11 +23,10 @@ const RMD_FILES = [
   'package-lock.json',
 ];
 
-export async function executeRemoveDeps(parsedArg: ParsedArg) {
-  let dirPath: string, dependencyOperations: RmdOp[];
+export async function executeRemoveDeps(executionPath: string) {
+  let dependencyOperations: RmdOp[];
   let rmdOpResultPromises: Promise<unknown>[];
-  dirPath = await getRemoveDepsDirectory(parsedArg);
-  dependencyOperations = await getDependencyOperations(dirPath);
+  dependencyOperations = await getDependencyOperations(executionPath);
   rmdOpResultPromises = dependencyOperations.map(dependencyOperation => {
     console.log(`Deleting ${dependencyOperation.ftype} ${dependencyOperation.rmPath} ...`);
     return dependencyOperation.execute().then(res => {
@@ -37,17 +35,6 @@ export async function executeRemoveDeps(parsedArg: ParsedArg) {
     });
   });
   await Promise.all(rmdOpResultPromises);
-}
-
-async function getRemoveDepsDirectory(parsedArg: ParsedArg): Promise<string> {
-  let filePath: string, dirPath: string, isDir: boolean;
-  filePath = parsedArg.argParams[0] ?? './';
-  dirPath = getPathRelativeToCwd(filePath);
-  isDir = await checkDir(dirPath);
-  if(!isDir) {
-    throw new Error(`Error executing '${parsedArg.flag}', the supplied path is not a directory:\n${dirPath}`);
-  }
-  return dirPath;
 }
 
 async function getDependencyOperations(dirPath: string): Promise<RmdOp[]> {

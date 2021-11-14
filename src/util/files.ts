@@ -5,7 +5,6 @@ import {
   stat,
 } from 'fs/promises';
 import { Dirent, Stats } from 'fs';
-import { ParsedArg } from '../lib/parse-args/parse-args';
 
 export function getPathRelativeToCwd(filePath: string) {
   let cwd: string;
@@ -53,11 +52,3 @@ export async function getDirents(dirPath: string): Promise<Dirent[]> {
   });
   return dirents;
 }
-
-export function getExecutionPath(parsedArg: ParsedArg): string {
-  let filePath: string, dirPath: string;
-  filePath = parsedArg.argParams[0] ?? './';
-  dirPath = getPathRelativeToCwd(filePath);
-  return dirPath;
-}
-

@@ -1,13 +1,11 @@
 
 import child_process, { ChildProcess } from 'child_process';
 import path from 'path';
-import { checkFile, getExecutionPath } from '../../util/files';
+import { checkFile } from '../../util/files';
 import { NODE_PACKAGE_FILENAME } from '../constants';
-import { ParsedArg } from '../parse-args/parse-args';
 
-export async function executeInstallDeps(parsedArg: ParsedArg) {
-  let executionPath: string, hasPackageFile: boolean;
-  executionPath = getExecutionPath(parsedArg);
+export async function executeInstallDeps(executionPath: string) {
+  let hasPackageFile: boolean;
   hasPackageFile = await checkHasPackageFile(executionPath);
   if(!hasPackageFile) {
     throw new Error(`No ${NODE_PACKAGE_FILENAME} file found at path ${executionPath}`);

@@ -25,7 +25,7 @@ const plugins = [
     tsconfigOverride: {
       exclude: [ './test' ],
       compilerOptions: {
-        module: 'ES2015'
+        module: 'ES2015',
       }
     }
   }),
