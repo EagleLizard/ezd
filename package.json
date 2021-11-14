@@ -10,6 +10,9 @@
     "build": "rollup --c",
     "clean": "rimraf ./dist/"
   },
+  "bin": {
+    "ezd": "./bin/index.js"
+  },
   "author": "EagleLizard",
   "license": "ISC",
   "devDependencies": {
