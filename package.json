@@ -1,7 +1,11 @@
 {
   "name": "ezd",
-  "version": "1.0.2-alpha.4",
-  "description": "",
+  "version": "1.0.3",
+  "description": "ezd cli",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/EagleLizard/ezd.git"
+  },
   "main": "dist/index.js",
   "module": "dist/index.es.js",
   "scripts": {
