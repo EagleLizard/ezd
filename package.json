@@ -1,6 +1,6 @@
 {
   "name": "ezd",
-  "version": "1.0.2-alpha.1",
+  "version": "1.0.2-alpha.2",
   "description": "",
   "main": "dist/index.js",
   "module": "dist/index.es.js",
