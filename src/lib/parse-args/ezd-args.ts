@@ -30,7 +30,7 @@ async function parseEzdArgs(argv: string[]) {
   ezdProgram
     .argument('[file]', 'optional path. If specified this will be used for all path-based commands')
     .option('-i --install-deps [installPath]', 'run npm install at path, or current working directory')
-    .option('-rmd --remove-deps [removePath]', 'remove package-lock and node_modules at path')
+    .option('-r --remove-deps [removePath]', 'remove package-lock and node_modules at path')
   ;
 
   ezdProgram.action(async (rawDirPath: unknown, options: Record<string, unknown>) => {
