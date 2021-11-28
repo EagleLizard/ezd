@@ -1,5 +1,14 @@
 
+import { stat } from 'fs/promises';
+
+import _chunk from 'lodash.chunk';
+
 import { DirNode, DirNodeFile } from './dir-node';
+
+const STAT_SKIP_ERR_CODES = [
+  'ENOENT',
+  'EPERM',
+];
 
 export class DirTree {
   root: DirNode;
@@ -33,23 +42,61 @@ export class DirTree {
     }
   }
 
-  async addFileStats() {
-    let allNodes: DirNode[], addStatsPromises: Promise<void>[];
+  async addFileStats(progressCb?: (doneCunt: number) => void) {
+    let fileStatJobChunkSize: number;
+    let addStatsPromises: Promise<void>[];
+    let addStatsTuples: [ DirNode, number, string ][];
+    let addStatsJobs: (() => Promise<void>)[];
+    let addStatsJobChunks: (() => Promise<void>)[][];
+    let doneCount: number;
 
-    allNodes = [];
+    doneCount = 0;
     addStatsPromises = [];
+    addStatsTuples = [];
+    addStatsJobs = [];
 
     this.traverse(currNode => {
-      allNodes.push(currNode.root);
+      for(let i = 0; i < currNode.root.files.length; ++i) {
+        let currFile: DirNodeFile;
+        currFile = currNode.root.files[i];
+        let addStatsJob: () => Promise<void>;
+        let filePath: string, fileIdx: number;
+        fileIdx = i;
+        filePath = currFile.filePath;
+        addStatsJob = async () => {
+          try {
+            currNode.root.files[fileIdx].stats = await stat(filePath);
+          } catch(e) {
+            if(!STAT_SKIP_ERR_CODES.includes(e.code)) {
+              throw e;
+            }
+          }
+        };
+        addStatsJobs.push(addStatsJob);
+      }
     });
-    for(let i = 0; i < allNodes.length; ++i) {
-      let currNode: DirNode;
-      let addStatsPromise: Promise<void>;
-      currNode = allNodes[i];
-      addStatsPromise = currNode.addFileStats();
-      addStatsPromises.push(addStatsPromise);
+
+
+    fileStatJobChunkSize = 1e5;
+
+    addStatsJobChunks = _chunk(addStatsJobs, fileStatJobChunkSize);
+
+    for(let k = 0; k < addStatsJobChunks.length; ++k) {
+      let currAddStatsJobChunk: (() => Promise<void>)[];
+      currAddStatsJobChunk = addStatsJobChunks[k];
+      for(let i = 0; i < currAddStatsJobChunk.length; ++i) {
+        let addStatsPromise: Promise<void>;
+        addStatsPromise = currAddStatsJobChunk[i]().then(() => {
+          doneCount++;
+          if(progressCb !== undefined) {
+            progressCb(doneCount);
+          }
+        });
+        addStatsPromises.push(addStatsPromise);
+        // await addStatsPromise;
+      }
+      await Promise.all(addStatsPromises);
     }
-    await Promise.all(addStatsPromises);
   }
 
   getDirCount(): number {

@@ -74,12 +74,10 @@ export class DirNode {
     try {
       dirents = await getDirents(dirPath);
     } catch(e) {
-      if(e?.code === 'EPERM') {
-        console.error(`EPERM - Cannot access directory: ${e?.path}`);
-        dirents = [];
-      } else {
+      if(e?.code !== 'EPERM') {
         throw e;
       }
+      dirents = [];
     }
     return new DirNode(dirPath, dirents);
   }
