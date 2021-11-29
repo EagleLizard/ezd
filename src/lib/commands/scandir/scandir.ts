@@ -1,8 +1,8 @@
 
 import path, { ParsedPath } from 'path';
 
-import { DirNode } from './dir-node';
-import { DirTree } from './dir-tree';
+import { DirNode, DirNodeFile } from './dir-node';
+import { DirTree, TreeInfo } from './dir-tree';
 import { Timer } from '../../../util/timer';
 
 const INDENT_STR = ' ';
@@ -14,6 +14,7 @@ export async function executeScandir(rootDir: string) {
   let totalBytes: number, totalMb: number, totalGb: number;
   let dirCount: number, fileCount: number;
   let showScanIndicator: boolean;
+  let treeInfo: TreeInfo, dirNodeTuples: [ DirNode, DirNodeFile[] ][];
 
   totalMsTimer = Timer.start();
 
@@ -35,30 +36,27 @@ export async function executeScandir(rootDir: string) {
   console.log('!'.repeat(20));
   console.log(`scan took ${Math.round(scanMs).toLocaleString()}ms`);
 
-  dirCount = 0;
-  fileCount = 0;
   timer = Timer.start();
-  dirCount = dirTree.getDirCount();
-  fileCount = dirTree.getFileCount();
+  treeInfo = dirTree.getTreeInfo();
   traverseMs = timer.stop();
+  dirCount = treeInfo.dirCount;
+  fileCount = treeInfo.fileCount;
+  dirNodeTuples = treeInfo.dirNodeTuples;
   console.log(`traverse took ${Math.round(traverseMs).toLocaleString()}ms`);
   console.log(`dirs: ${dirCount.toLocaleString()}`);
   console.log(`files: ${fileCount.toLocaleString()}`);
 
-  const modBy = Math.floor(fileCount / 70);
   timer = Timer.start();
+  const modBy = Math.floor(dirCount / 61);
   await dirTree.addFileStats((doneCount) => {
     if((doneCount % modBy) === 0) {
       process.stdout.write('.');
     }
-  });
+  }, dirNodeTuples);
   process.stdout.write('\n');
   fileSizeMs = timer.stop();
-  totalBytes = dirTree.getSize();
 
-  // ({
-  //   totalBytes
-  // } = await printTree(dirTree));
+  totalBytes = dirTree.getSize();
 
   totalMb = totalBytes / (1024 ** 2);
   totalGb = totalBytes / (1024 ** 3);
