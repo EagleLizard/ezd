@@ -6,6 +6,8 @@ import {
 } from 'fs/promises';
 import { Dirent, Stats } from 'fs';
 
+export const BASE_DIR = path.resolve(__dirname, '../../..');
+
 export function getPathRelativeToCwd(filePath: string) {
   let cwd: string;
   let absolutePath: string;

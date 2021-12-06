@@ -1,0 +1,56 @@
+<html>
+  <head>
+    <style>
+      html body {
+        /* font-family: Verdana, Geneva, Tahoma, sans-serif; */
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 14px;
+      }
+      div.dir-container {
+        /* background-color: chartreuse; */
+        border-left: 1px solid black;
+        border-bottom: 1px solid black;
+        padding: 5px;
+      }
+      div.dir-container .file-stat-container {
+        border-left: 1px solid black;
+        padding-left: 5px;
+      }
+      details summary {
+        list-style: none;
+      }
+      details summary::-webkit-details-marker {
+        display: none;
+      }
+      .dir-container details summary > .summary-container .summary-marker,
+      .dir-container details summary > .summary-container .summary-text {
+        display: inline-block;
+      }
+      .dir-container details:not([open]) > *:not(summary) {
+        /* background-color: chartreuse; */
+        /* display: none; */
+      }
+      .dir-container details[open] > summary .summary-container .summary-marker {
+        transform: rotate(90deg);
+      }
+      .dir-container details[open] > summary > .summary-container .summary-text {
+        border-bottom: 1px solid black;
+      }
+      .dir-container details summary > .summary-container .summary-text .label {
+        display: inline-block;
+      }
+      .dir-container details summary > .summary-container .summary-text .size {
+        display: inline-block;
+        font-family: 'Courier New', Courier, monospace;
+      }
+      .dir-container details .file-stats {
+        border-left: 1px solid black;
+      }
+    </style>
+  </head>
+  <body>
+    <%- include('dir-node.template', {
+      rootNode: rootNode
+    }) %>
+  </body>
+</html>

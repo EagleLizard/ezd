@@ -12,6 +12,7 @@
   },
   "include": [
     "index.ts",
+    "copy-templates.ts"
   ],
   "exclude": [
     "node_modules",

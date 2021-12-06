@@ -1,0 +1,50 @@
+<div class="dir-node-container">
+  <div class="dir-container">
+    <div class="dir-title">
+      <!-- <%- rootNode.parsedPath.base %> -->
+    </div>
+    <% if(rootNode.files.length > 0) { %>
+      <details>
+        <summary>
+          <div class="summary-container">
+            <div class="summary-text">
+              files
+            </div>
+            <div class="summary-marker">
+              ▶
+            </div>
+          </div>
+        </summary>
+        <div class="file-stats">
+          <% rootNode.files.forEach(dirNodeFile => { %>
+            <div class="file-stat-container">
+              <%- dirNodeFile.parsedPath.base %>
+            </div>
+          <% }) %>
+        </div>
+      </details>
+    <% } %>
+    <% rootNode.children.forEach(childNode => {%>
+      <details>
+        <summary>
+          <div class="summary-container">
+            <div class="summary-text">
+              <div class="size">
+                <%- childNode.sizeStr %>
+              </div>
+              <div class="label">
+                <%- childNode.parsedPath.base %>
+              </div>
+            </div>
+            <div class="summary-marker">
+              ▶
+            </div>
+          </div>
+        </summary>
+        <%- include('dir-node.template', {
+          rootNode: childNode
+        }) %>
+      </details>
+    <% }) %>
+  </div>
+</div>

@@ -9,6 +9,7 @@ const STAT_SKIP_ERR_CODES = [
 
 export interface DirNodeFile {
   filePath: string;
+  parsedPath: ParsedPath;
   stats?: Stats;
 }
 
@@ -33,6 +34,7 @@ export class DirNode {
       } else {
         this.files.push({
           filePath: subPath,
+          parsedPath: path.parse(subPath),
         });
       }
     }
