@@ -49,12 +49,20 @@ async function parseEzdArgs(argv: string[]) {
   ;
   ezdProgram.command('dirstat <rootDir>')
     .description('Scan a directory and get stats')
-    .action(async (rawRootDir: string) => {
+    .option('-gt --generate-test-files')
+    .action(async (rawRootDir: string, options: Record<string, unknown>) => {
       let rootDir: string, isDir: boolean;
+      let generateTestFiles: boolean;
       rootDir = getPathRelativeToCwd(rawRootDir);
       isDir = await checkDir(rootDir);
       if(!isDir) {
         throw new Error(`Pass invalid path to scandir, must be a directory. Received: ${rootDir}`);
+      }
+      if(options.generateTestFiles === true) {
+        ezdArgs[VALID_ARGS.GENERATE_TEST_FILES] = {
+          argType: VALID_ARGS.GENERATE_TEST_FILES,
+          argParams: rootDir,
+        };
       }
       ezdArgs[VALID_ARGS.DIRSTAT] = {
         argType: VALID_ARGS.DIRSTAT,

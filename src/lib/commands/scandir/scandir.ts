@@ -3,11 +3,24 @@ import { DirNode, DirNodeFile } from './dir-node';
 import { DirTree, TreeInfo } from './dir-tree';
 import { Timer } from '../../../util/timer';
 import { dirstatRenderEjs } from './dirstat-render/dirstat-render-ejs';
+import { EzdArgs } from '../../parse-args/ezd-args';
 import { dirstatRender } from './dirstat-render/dirstat-render';
+import { generateDirstatTest } from './generate-dirstat-test/generate-dirstat-test';
 
 const INDENT_STR = ' ';
 
-export async function executeScandir(rootDir: string) {
+export async function executeScandir(ezdArgs: EzdArgs) {
+  let rootDir: string, doGenerate: boolean;
+  rootDir = ezdArgs.DIRSTAT.argParams;
+  doGenerate = ezdArgs.GENERATE_TEST_FILES !== undefined;
+  if(doGenerate) {
+    await generateDirstatTest(rootDir);
+    return;
+  }
+  await executeDirstatScan(rootDir);
+}
+
+async function executeDirstatScan(rootDir: string) {
   let dirNode: DirNode, dirTree: DirTree;
   let timer: Timer, totalMsTimer: Timer,
     scanMs: number, fileSizeMs: number, traverseMs: number, totalMs: number;
@@ -46,12 +59,7 @@ export async function executeScandir(rootDir: string) {
   console.log(`files: ${fileCount.toLocaleString()}`);
 
   timer = Timer.start();
-  const modBy = Math.floor(dirCount / 61);
-  await dirTree.addFileStats((doneCount) => {
-    if((doneCount % modBy) === 0) {
-      process.stdout.write('.');
-    }
-  }, dirNodeTuples);
+  await addFileStats(dirTree, treeInfo);
   process.stdout.write('\n');
   fileSizeMs = timer.stop();
 
@@ -70,8 +78,8 @@ export async function executeScandir(rootDir: string) {
 }
 
 async function renderDirTree(dirTree: DirTree, treeInfo: TreeInfo) {
-  await dirstatRenderEjs(dirTree);
-  // await dirstatRender(dirTree);
+  // await dirstatRenderEjs(dirTree);
+  await dirstatRender(dirTree);
 }
 
 async function getDirTree(rootDir: string): Promise<DirTree> {
@@ -93,8 +101,11 @@ async function getDirTree(rootDir: string): Promise<DirTree> {
 }
 
 async function addFileStats(dirTree: DirTree, treeInfo: TreeInfo) {
-  const modBy = Math.floor(treeInfo.dirCount / 78);
-  await dirTree.addFileStats((doneCount) => {
+  let modBy: number;
+  await dirTree.addFileStats((doneCount, totalJobCount) => {
+    if(modBy === undefined) {
+      modBy = Math.floor(totalJobCount / 78) || 1;
+    }
     if((doneCount % modBy) === 0) {
       process.stdout.write('.');
     }

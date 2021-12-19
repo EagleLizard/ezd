@@ -1,7 +1,10 @@
 
+import { Stats } from 'fs';
 import { stat } from 'fs/promises';
 
 import _chunk from 'lodash.chunk';
+import { WorkerPool } from 'workerpool';
+import { getPool, MAX_WORKERS } from '../../../util/worker-pool';
 
 import { DirNode, DirNodeFile } from './dir-node';
 
@@ -69,27 +72,6 @@ export class DirTree {
     };
   }
 
-  async addFileStats(
-    progressCb?: (doneCount: number) => void,
-    fileSizeTuples?: [ DirNode, DirNodeFile[] ][]
-  ) {
-    let fileSizeJobs: (() => Promise<void>)[];
-    if(fileSizeTuples === undefined) {
-      fileSizeTuples = [];
-
-      this.traverse(currNode => {
-        fileSizeTuples.push([
-          currNode.root,
-          currNode.root.files,
-        ]);
-      });
-    }
-
-    fileSizeJobs = getFileSizeJobs(fileSizeTuples);
-
-    await executeFileSizeJobs(fileSizeJobs, progressCb);
-  }
-
   getDirCount(): number {
     let dirCount: number;
     dirCount = 0;
@@ -151,21 +133,50 @@ export class DirTree {
     dirTree.children = childNodes;
     return dirTree;
   }
+
+  async addFileStats(
+    progressCb?: (doneCount: number, totalJobCount?: number) => void,
+    fileSizeTuples?: [ DirNode, DirNodeFile[] ][]
+  ) {
+    let fileSizeJobs: (() => Promise<void>)[];
+    if(fileSizeTuples === undefined) {
+      fileSizeTuples = [];
+
+      this.traverse(currNode => {
+        fileSizeTuples.push([
+          currNode.root,
+          currNode.root.files,
+        ]);
+      });
+    }
+
+    // fileSizeJobs = getFileSizeJobs(fileSizeTuples);
+    fileSizeJobs = getBatchFileSizeJobs(fileSizeTuples);
+
+    await executeFileSizeJobs(fileSizeJobs, progressCb);
+  }
 }
 
 async function executeFileSizeJobs(
   fileSizeJobs: (() => Promise<void>)[],
-  progressCb?: (doneCount: number) => void,
+  progressCb?: (doneCount: number, totalJobCount?: number) => void,
 ) {
   let doneCount: number;
   let fileSizeJobChunkSize: number;
   let fileSizeJobChunks: (() => Promise<void>)[][];
 
   doneCount = 0;
+  // fileSizeJobChunkSize = 14;
+  // fileSizeJobChunkSize = 100;
+  // fileSizeJobChunkSize = 500;
+  // fileSizeJobChunkSize = 1e3;
   fileSizeJobChunkSize = 1e4;
+  // fileSizeJobChunkSize = 1e9;
+  console.log(`fileSizeJobs: ${fileSizeJobs.length.toLocaleString()}`);
   console.log(`fileSizeJobChunkSize: ${fileSizeJobChunkSize.toLocaleString()}`);
 
   fileSizeJobChunks = _chunk(fileSizeJobs, fileSizeJobChunkSize);
+  console.log(`num chunks: ${fileSizeJobChunks.length.toLocaleString()}`);
   for(let k = 0; k < fileSizeJobChunks.length; ++k) {
     let fileSizeJobPromises: Promise<void>[];
     let currFileSizeJobChunk: (() => Promise<void>)[];
@@ -176,7 +187,7 @@ async function executeFileSizeJobs(
       fileSizeJobPromise = currFileSizeJobChunk[i]().then(() => {
         doneCount++;
         if(progressCb !== undefined) {
-          progressCb(doneCount);
+          progressCb(doneCount, fileSizeJobs.length);
         }
       });
       fileSizeJobPromises.push(fileSizeJobPromise);
@@ -185,27 +196,111 @@ async function executeFileSizeJobs(
   }
 }
 
+function getBatchFileSizeJobs(fileSizeTuples: [ DirNode, DirNodeFile[] ][]) {
+  // const BATCH_SIZE = 20;
+  // const BATCH_SIZE = 50;
+  // const BATCH_SIZE = 500;
+  // const BATCH_SIZE = 1e3;
+  // const BATCH_SIZE = Math.ceil(fileSizeTuples.length / MAX_WORKERS);
+  // const BATCH_SIZE = Math.ceil(fileSizeTuples.length / (MAX_WORKERS * 64));
+
+  const BATCH_SIZE = 100;
+
+  console.log('');
+  console.log(`BATCH_SIZE: ${BATCH_SIZE.toLocaleString()}`);
+  let fileSizeJobs: (() => Promise<void>)[];
+  let tupleChunks: [ DirNode, DirNodeFile[] ][][];
+  tupleChunks = _chunk(fileSizeTuples, BATCH_SIZE);
+  fileSizeJobs = [];
+  for(let k = 0; k < tupleChunks.length; ++k) {
+    let currTupleChunk: [ DirNode, DirNodeFile[] ][];
+    let dirNodeFiles: DirNodeFile[][];
+    let fileSizeJob: () => Promise<void>;
+    currTupleChunk = tupleChunks[k];
+    dirNodeFiles = currTupleChunk.map(fileSizeTuple => {
+      return fileSizeTuple[1];
+    });
+    fileSizeJob = getThreadedBatchFileSizeJob(dirNodeFiles);
+    fileSizeJobs.push(fileSizeJob);
+  }
+  return fileSizeJobs;
+}
+
 function getFileSizeJobs(fileSizeTuples: [ DirNode, DirNodeFile[] ][]) {
   let fileSizeJobs: (() => Promise<void>)[];
   fileSizeJobs = [];
   for(let i = 0; i < fileSizeTuples.length; ++i) {
-    let currDirNode: DirNode, currDirNodeFiles: DirNodeFile[];
+    let currDirNodeFiles: DirNodeFile[];
     let fileSizeJob: () => Promise<void>;
-    [ currDirNode, currDirNodeFiles ] = fileSizeTuples[i];
-    fileSizeJob = async () => {
-      for(let k = 0; k < currDirNodeFiles.length; ++k) {
-        let currFile: DirNodeFile;
-        currFile = currDirNode.files[k];
-        try {
-          currFile.stats = await stat(currFile.filePath);
-        } catch(e) {
-          if(!STAT_SKIP_ERR_CODES.includes(e.code)) {
-            throw e;
-          }
-        }
-      }
-    };
+    [ , currDirNodeFiles ] = fileSizeTuples[i];
+
+    fileSizeJob = getThreadedFileSizeJob(currDirNodeFiles);
+    // fileSizeJob = getFileSizeJob(currDirNodeFiles);
+
     fileSizeJobs.push(fileSizeJob);
   }
   return fileSizeJobs;
+}
+
+function getFileSizeJob(dirNodeFiles: DirNodeFile[]) {
+  return async () => {
+    for(let k = 0; k < dirNodeFiles.length; ++k) {
+      let currFile: DirNodeFile, fileStats: Stats;
+      currFile = dirNodeFiles[k];
+      // fileStats = await pool.exec('getFileSize', [ currFile.filePath ]);
+      fileStats = await getFileSize(currFile.filePath);
+      currFile.stats = fileStats;
+    }
+  };
+}
+
+function getThreadedBatchFileSizeJob(dirNodeFilesArr: DirNodeFile[][]) {
+  let pool: WorkerPool;
+  pool = getPool();
+  return async () => {
+    let filePathsArr: string[][], filesStatsArr: Stats[][];
+    filePathsArr = dirNodeFilesArr.map(dirNodeFiles => {
+      return dirNodeFiles.map(dirNodeFile => {
+        return dirNodeFile.filePath;
+      });
+    });
+    filesStatsArr = await pool.exec('getFileSizesBatched', [ filePathsArr ]);
+    for(let i = 0; i < filesStatsArr.length; ++i) {
+      let fileStats: Stats[], dirNodeFiles: DirNodeFile[];
+      fileStats = filesStatsArr[i];
+      dirNodeFiles = dirNodeFilesArr[i];
+      for(let k = 0; k < fileStats.length; ++k) {
+        let fileStat: Stats, dirNodeFile: DirNodeFile;
+        fileStat = fileStats[k];
+        dirNodeFile = dirNodeFiles[k];
+        dirNodeFile.stats = fileStat;
+      }
+    }
+  };
+}
+function getThreadedFileSizeJob(dirNodeFiles: DirNodeFile[]) {
+  let pool: WorkerPool;
+  pool = getPool();
+  return async () => {
+    let filePaths: string[], filesStats: Stats[];
+    filePaths = dirNodeFiles.map(dirNodeFile => {
+      return dirNodeFile.filePath;
+    });
+    filesStats = await pool.exec('getFileSizes', [ filePaths ]);
+    for(let k = 0; k < filesStats.length; ++k) {
+      dirNodeFiles[k].stats = filesStats[k];
+    }
+  };
+}
+
+async function getFileSize(filePath: string): Promise<Stats> {
+  let fileStats: Stats;
+  try {
+    fileStats = await stat(filePath);
+  } catch(e) {
+    if(!STAT_SKIP_ERR_CODES.includes(e.code)) {
+      throw e;
+    }
+  }
+  return fileStats;
 }

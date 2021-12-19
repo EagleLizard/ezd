@@ -1,4 +1,7 @@
 
+const MINUTES_IN_MS = 1000 * 60;
+const SECONDS_IN_MS = 1000;
+
 export function getIntuitiveBytes(bytes: number): [ number, string ] {
   // let sizeVal: number, labelStr: string;
   let bytesTuple: [ number, string ];
@@ -24,4 +27,25 @@ export function getIntuitiveBytes(bytes: number): [ number, string ] {
     ];
   }
   return bytesTuple;
+}
+
+export function getIntuitiveTime(ms: number): [ number, string ] {
+  let timeTuple: [ number, string ];
+  if(ms > MINUTES_IN_MS) {
+    timeTuple = [
+      ms / MINUTES_IN_MS,
+      'm',
+    ];
+  } else if(ms > SECONDS_IN_MS) {
+    timeTuple = [
+      ms / SECONDS_IN_MS,
+      's',
+    ];
+  } else {
+    timeTuple = [
+      ms,
+      'ms'
+    ];
+  }
+  return timeTuple;
 }
