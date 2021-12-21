@@ -20,6 +20,10 @@ export class Timer {
     deltaMs = Timer.getDeltaMs(this.startTime, this.endTime);
     return deltaMs;
   }
+  currentMs(): number {
+    return Timer.getDeltaMs(this.startTime, process.hrtime.bigint());
+  }
+
   static getDeltaMs(start: bigint, end: bigint): number {
     return Number((end - start) / BigInt(1e3)) / 1e3;
   }

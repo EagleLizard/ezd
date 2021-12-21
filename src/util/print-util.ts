@@ -29,6 +29,12 @@ export function getIntuitiveBytes(bytes: number): [ number, string ] {
   return bytesTuple;
 }
 
+export function getIntuitiveByteString(ms: number): string {
+  let bytesTuple: [ number, string ];
+  bytesTuple = getIntuitiveBytes(ms);
+  return `${bytesTuple[0].toFixed(3)} ${bytesTuple[1]}`;
+}
+
 export function getIntuitiveTime(ms: number): [ number, string ] {
   let timeTuple: [ number, string ];
   if(ms > MINUTES_IN_MS) {
@@ -48,4 +54,10 @@ export function getIntuitiveTime(ms: number): [ number, string ] {
     ];
   }
   return timeTuple;
+}
+
+export function getIntuitiveTimeString(ms: number): string {
+  let timeTuple: [ number, string ];
+  timeTuple = getIntuitiveTime(ms);
+  return `${timeTuple[0].toFixed(3)} ${timeTuple[1]}`;
 }

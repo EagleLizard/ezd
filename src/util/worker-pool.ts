@@ -1,14 +1,10 @@
 
-import { Stats } from 'fs';
-import { stat } from 'fs/promises';
 import workerpool from 'workerpool';
 import os from 'os';
 
 const NUM_CPUS = os.cpus().length;
 const MAX_WORKERS = NUM_CPUS - 1;
-// const MAX_WORKERS = NUM_CPUS * 4;
-// const MAX_WORKERS = Math.ceil(NUM_CPUS / 2);
-// const MAX_WORKERS = Math.ceil(NUM_CPUS / 4);
+// const MAX_WORKERS = NUM_CPUS * 2;
 
 export {
   MAX_WORKERS,
@@ -22,7 +18,6 @@ export function getPool() {
   if(pool === undefined) {
     initPool({
       maxWorkers: MAX_WORKERS,
-      // minWorkers: MAX_WORKERS,
     });
   }
   return pool;

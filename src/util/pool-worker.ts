@@ -15,18 +15,8 @@ workerpool.worker({
 });
 
 async function getFileSizesBatched(filePathsArr: string[][]) {
-  let fileStatsArr: Stats[][], fileStatsArrPromises: Promise<Stats[]>[];
+  let fileStatsArr: Stats[][];
   fileStatsArr = [];
-  fileStatsArrPromises = [];
-
-  // for(let i = 0; i < filePathsArr.length; ++i) {
-  //   let fileStatsPromise: Promise<Stats[]>;
-  //   let currFilePaths: string[];
-  //   currFilePaths = filePathsArr[i];
-  //   fileStatsPromise = getFileSizes(currFilePaths);
-  //   fileStatsArrPromises.push(fileStatsPromise);
-  // }
-  // fileStatsArr = await Promise.all(fileStatsArrPromises);
 
   for(let i = 0; i < filePathsArr.length; ++i) {
     let fileStats: Stats[];
@@ -40,24 +30,15 @@ async function getFileSizesBatched(filePathsArr: string[][]) {
 }
 
 async function getFileSizes(filePaths: string[]): Promise<Stats[]> {
-  let fileSizePromises: Promise<Stats>[], fileStats: Stats[];
-  fileSizePromises = [];
+  let fileStats: Stats[];
   fileStats = [];
 
   for(let i = 0; i < filePaths.length; ++i) {
-    let currFilePath: string, currStatsPromise: Promise<Stats>;
+    let currFilePath: string, currStats: Stats;
     currFilePath = filePaths[i];
-    currStatsPromise = getFileSize(currFilePath);
-    fileSizePromises.push(currStatsPromise);
+    currStats = await getFileSize(currFilePath);
+    fileStats.push(currStats);
   }
-  fileStats = await Promise.all(fileSizePromises);
-
-  // for(let i = 0; i < filePaths.length; ++i) {
-  //   let currFilePath: string, currStats: Stats, currStatsPromise: Promise<Stats>;
-  //   currFilePath = filePaths[i];
-  //   currStats = await getFileSize(currFilePath);
-  //   fileStats.push(currStats);
-  // }
 
   return fileStats;
 }
