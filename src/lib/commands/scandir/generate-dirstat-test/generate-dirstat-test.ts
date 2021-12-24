@@ -13,20 +13,20 @@ const DIRSTAT_TEST_DIR = 'ezd-dirstat-test-dir';
 
 const MAX_ASYNC_FILEWRITES = 200;
 
-const DIRS_PER_LEVEL = 2;
+const DIRS_PER_LEVEL = 4;
 
-// const BYTES_PER_FILE = 4096;
-const BYTES_PER_FILE = 64;
+const BYTES_PER_FILE = 4096;
+// const BYTES_PER_FILE = 64;
 
 // const ENABLE_DISK_WRITES = true;
 const ENABLE_DISK_WRITES = false;
 
 export async function generateDirstatTest(rootDir: string) {
   let totalDirs: number, totalFiles: number;
-  // totalDirs = 2e5;
-  // totalFiles = 2e6;
-  totalDirs = 5e4;
-  totalFiles = 2.5e5;
+  totalDirs = 1e6;
+  totalFiles = 5e5;
+  // totalDirs = 1e5;
+  // totalFiles = 7e5;
   await generateDirStatTestDeterministic(rootDir, totalDirs, totalFiles);
 }
 

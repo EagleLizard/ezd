@@ -12,10 +12,10 @@ export interface PathNodeFile {
 }
 
 export class PathNode {
-  public files: PathNodeFile[];
   constructor(
     public basePath: string,
     public children: Map<string, PathNode> = new Map,
+    public files: PathNodeFile[] = [],
   ) {
 
   }
@@ -31,11 +31,22 @@ export class PathNode {
 }
 
 export class PathTree extends PathNode {
+  private pathPartsMemo: Record<string, PathNode>;
   constructor(basePath: string) {
     super(basePath);
+    this.pathPartsMemo = {};
   }
   getChild(pathParts: string[]): PathNode {
+    let fullPath: string;
     let lastNode: PathNode;
+    fullPath = pathParts.join(path.sep);
+    if(this.pathPartsMemo[fullPath] !== undefined) {
+      return this.pathPartsMemo[fullPath];
+    }
+    if(fullPath === this.basePath) {
+      // root pathTree node is the current node
+      return this;
+    }
     lastNode = this;
     for(let i = 0; i < pathParts.length; ++i) {
       let currPathPart: string, pathNodeBase: string;
@@ -50,6 +61,7 @@ export class PathTree extends PathNode {
       }
       lastNode = lastNode.get(currPathPart);
     }
+    this.pathPartsMemo[fullPath] = lastNode;
     return lastNode;
   }
   walk(cb: (walkParams: PathTreeWalkCbParams) => void) {
@@ -64,6 +76,20 @@ export class PathTree extends PathNode {
     children = Array.from(pathNode.children.values());
     for(let i = 0; i < children.length; ++i) {
       this._walk(children[i], [ this.basePath, children[i].basePath ], cb);
+    }
+  }
+  walk2(cb: (walkParams: PathTreeWalkCbParams) => void) {
+    this._walk2(this, [ this.basePath ], cb);
+  }
+  private _walk2(pathNode: PathNode, pathSoFar: string[], cb: (walkParams: PathTreeWalkCbParams) => void) {
+    let children: PathNode[];
+    cb({
+      pathNode,
+      pathSoFar,
+    });
+    children = Array.from(pathNode.children.values());
+    for(let i = 0; i < children.length; ++i) {
+      this._walk2(children[i], [ children[i].basePath ], cb);
     }
   }
 }
