@@ -64,21 +64,8 @@ export class PathTree extends PathNode {
     this.pathPartsMemo[fullPath] = lastNode;
     return lastNode;
   }
+
   walk(cb: (walkParams: PathTreeWalkCbParams) => void) {
-    this._walk(this, [ this.basePath ], cb);
-  }
-  private _walk(pathNode: PathNode, pathSoFar: string[], cb: (walkParams: PathTreeWalkCbParams) => void) {
-    let children: PathNode[];
-    cb({
-      pathNode,
-      pathSoFar,
-    });
-    children = Array.from(pathNode.children.values());
-    for(let i = 0; i < children.length; ++i) {
-      this._walk(children[i], [ this.basePath, children[i].basePath ], cb);
-    }
-  }
-  walk2(cb: (walkParams: PathTreeWalkCbParams) => void) {
     this._walk2(this, [ this.basePath ], cb);
   }
   private _walk2(pathNode: PathNode, pathSoFar: string[], cb: (walkParams: PathTreeWalkCbParams) => void) {

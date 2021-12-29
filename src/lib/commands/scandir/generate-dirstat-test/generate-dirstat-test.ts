@@ -7,26 +7,30 @@ import randomstring from 'randomstring';
 import { checkDir, rmrf } from '../../../../util/files';
 import { Timer } from '../../../../util/timer';
 import { getIntuitiveTime, getIntuitiveTimeString } from '../../../../util/print-util';
-import { sleep } from '../../../../util/sleep';
+import { sleep, sleepImmediate } from '../../../../util/sleep';
 
 const DIRSTAT_TEST_DIR = 'ezd-dirstat-test-dir';
 
-const MAX_ASYNC_FILEWRITES = 200;
+const MAX_ASYNC_FILEWRITES = 100;
 
-const DIRS_PER_LEVEL = 4;
+const DIRS_PER_LEVEL = 2;
 
 const BYTES_PER_FILE = 4096;
 // const BYTES_PER_FILE = 64;
 
-// const ENABLE_DISK_WRITES = true;
-const ENABLE_DISK_WRITES = false;
+const ENABLE_DISK_WRITES = true;
+// const ENABLE_DISK_WRITES = false;
 
 export async function generateDirstatTest(rootDir: string) {
   let totalDirs: number, totalFiles: number;
-  totalDirs = 1e6;
-  totalFiles = 5e5;
-  // totalDirs = 1e5;
-  // totalFiles = 7e5;
+  // totalDirs = 1e6;
+  // totalFiles = 2e6;
+  totalDirs = 200;
+  totalFiles = 500;
+  console.log('');
+  console.log(`DIRS_PER_LEVEL: ${DIRS_PER_LEVEL}`);
+  console.log(`MAX_ASYNC_FILEWRITES: ${MAX_ASYNC_FILEWRITES}`);
+  console.log('');
   await generateDirStatTestDeterministic(rootDir, totalDirs, totalFiles);
 }
 
@@ -63,7 +67,8 @@ async function generateDirStatTestDeterministic(rootDir: string, totalDirs: numb
     let currIdx: number;
     currIdx = i;
     while(runningFileWrites > MAX_ASYNC_FILEWRITES) {
-      await sleep(0);
+      // await sleep(0);
+      await sleepImmediate();
     }
     currFilePath = filePaths[i];
     currFileData = randomstring.generate(BYTES_PER_FILE);

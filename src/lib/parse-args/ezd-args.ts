@@ -52,7 +52,6 @@ async function parseEzdArgs(argv: string[]) {
     .option('-gt --generate-test-files')
     .action(async (rawRootDir: string, options: Record<string, unknown>) => {
       let rootDir: string, isDir: boolean;
-      let generateTestFiles: boolean;
       rootDir = getPathRelativeToCwd(rawRootDir);
       isDir = await checkDir(rootDir);
       if(!isDir) {
