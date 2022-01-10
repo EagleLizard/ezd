@@ -66,7 +66,12 @@ export class PathTree extends PathNode {
   }
 
   walk(cb: (walkParams: PathTreeWalkCbParams) => void) {
-    this._walk2(this, [ this.basePath ], cb);
+    let children: PathNode[];
+    // this._walk2(this, [ this.basePath ], cb);
+    children = Array.from(this.children.values());
+    for(let i = 0; i < children.length; ++i) {
+      this._walk2(children[i], [ ], cb);
+    }
   }
   private _walk2(pathNode: PathNode, pathSoFar: string[], cb: (walkParams: PathTreeWalkCbParams) => void) {
     let children: PathNode[];
@@ -77,6 +82,27 @@ export class PathTree extends PathNode {
     children = Array.from(pathNode.children.values());
     for(let i = 0; i < children.length; ++i) {
       this._walk2(children[i], [ children[i].basePath ], cb);
+    }
+  }
+
+  traverse(cb: (pathNode: PathNode, soFar: PathNode[]) => void) {
+    let rootChildren: PathNode[];
+    rootChildren = Array.from(this.children.values());
+    for(let i = 0; i < rootChildren.length; ++i) {
+      _traverse(rootChildren[i], []);
+    }
+    function _traverse(pathNode: PathNode, soFar: PathNode[]) {
+      let children: PathNode[];
+      children = Array.from(pathNode.children.values());
+      // if(children.length < 1) {
+        cb(pathNode, soFar);
+      // }
+
+      soFar.push(pathNode);
+      for(let i = 0; i < children.length; ++i) {
+        _traverse(children[i], soFar);
+      }
+      soFar.pop();
     }
   }
 }

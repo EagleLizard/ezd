@@ -9,3 +9,5 @@ export enum VALID_ARGS {
 }
 
 export const NODE_PACKAGE_FILENAME = 'package.json';
+
+export const LOG_DIRNAME = 'logs';
