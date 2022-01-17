@@ -4,33 +4,32 @@ import { mkdir, rm, writeFile } from 'fs/promises';
 
 import randomstring from 'randomstring';
 
-import { checkDir, rmrf } from '../../../../util/files';
+import { checkDir } from '../../../../util/files';
 import { Timer } from '../../../../util/timer';
 import { getIntuitiveTime, getIntuitiveTimeString } from '../../../../util/print-util';
-import { sleep, sleepImmediate } from '../../../../util/sleep';
-import { walkDir, WalkDirResult } from '../../dirstat/walk-dir';
+import { sleep } from '../../../../util/sleep';
 
 const DIRSTAT_TEST_DIR = 'ezd-dirstat-test-dir';
 
-const MAX_ASYNC_FILEWRITES = 100;
+const MAX_ASYNC_FILE_WRITES = 100;
+const MAX_ASYNC_MKDIRS = 100;
 
-const DIRS_PER_LEVEL = 100;
+const DIRS_PER_LEVEL = 10;
 
 const BYTES_PER_FILE = 4096;
-// const BYTES_PER_FILE = 64;
 
 const ENABLE_DISK_WRITES = true;
 // const ENABLE_DISK_WRITES = false;
 
 export async function generateDirstatTest(rootDir: string) {
   let totalDirs: number, totalFiles: number;
-  totalDirs = 5e5;
-  totalFiles = 1e4;
-  // totalDirs = 20;
-  // totalFiles = 100;
+  totalDirs = 1e5;
+  totalFiles = Math.round(totalDirs / 4);
+
   console.log('');
   console.log(`DIRS_PER_LEVEL: ${DIRS_PER_LEVEL.toLocaleString()}`);
-  console.log(`MAX_ASYNC_FILEWRITES: ${MAX_ASYNC_FILEWRITES}`);
+  console.log(`MAX_ASYNC_FILE_WRITES: ${MAX_ASYNC_FILE_WRITES}`);
+  console.log(`MAX_ASYNC_MKDIRS: ${MAX_ASYNC_MKDIRS}`);
   console.log('');
   await generateDirStatTestDeterministic(rootDir, totalDirs, totalFiles);
 }
@@ -49,7 +48,6 @@ async function generateDirStatTestDeterministic(rootDir: string, totalDirs: numb
   filePaths = generateFilePaths(dirPaths, totalFiles);
 
   await createTestDirs(dirPaths);
-  // await createTestDirsSync(dirPaths);
 
   runningFileWrites = 0;
   const fileModBy = Math.ceil(filePaths.length / 70);
@@ -58,9 +56,8 @@ async function generateDirStatTestDeterministic(rootDir: string, totalDirs: numb
     let testFilePromise: Promise<void>;
     let currIdx: number;
     currIdx = i;
-    while(runningFileWrites > MAX_ASYNC_FILEWRITES) {
-      // await sleep(0);
-      await sleepImmediate();
+    while(runningFileWrites > MAX_ASYNC_FILE_WRITES) {
+      await sleep();
     }
     currFilePath = filePaths[i];
     currFileData = randomstring.generate(BYTES_PER_FILE);
@@ -79,40 +76,20 @@ async function generateDirStatTestDeterministic(rootDir: string, totalDirs: numb
     await sleep(10);
   }
   process.stdout.write('\n');
+
   deltaMs = timer.stop();
   timeStr = getIntuitiveTimeString(deltaMs);
+
   console.log(`generate took ${timeStr}`);
-  // console.log(dirPaths);
-  // console.log(filePaths);
   console.log(dirPaths.length.toLocaleString());
   console.log(filePaths.length.toLocaleString());
-}
-
-async function createTestDirsSync(dirPaths: string[]) {
-  let timer: Timer, deltaMs: number;
-  const dirModBy = Math.ceil(dirPaths.length / 50);
-  timer = Timer.start();
-  for(let i = 0; i < dirPaths.length; ++i) {
-    let currDirPath: string;
-    currDirPath = dirPaths[i];
-    // console.log(currDirPath);
-    if(ENABLE_DISK_WRITES) {
-      await mkdir(currDirPath);
-    }
-    if((i % dirModBy) === 0) {
-      process.stdout.write('|');
-    }
-  }
-  deltaMs = timer.stop();
-  process.stdout.write('\n');
-  console.log(`createTestDirsSync took: ${getIntuitiveTimeString(deltaMs)}`);
 }
 
 async function createTestDirs(dirPaths: string[]) {
   let timer: Timer, deltaMs: number;
   let groupedDirPathsMap: Record<number, string[]>, groupedDirPaths: [ number, string[] ][];
   let dirPathGroups: string[][];
-  let doneCount: number;
+  let doneCount: number, runningMkdirs: number;
 
   const dirModBy = Math.ceil(dirPaths.length / 50);
   timer = Timer.start();
@@ -143,6 +120,14 @@ async function createTestDirs(dirPaths: string[]) {
   });
 
   doneCount = 0;
+  runningMkdirs = 0;
+
+  const getMkdirPromise = async (mkdirPath: string) => {
+    return ENABLE_DISK_WRITES
+      ? mkdir(mkdirPath)
+      : Promise.resolve()
+    ;
+  };
 
   for(let i = 0; i < dirPathGroups.length; ++i) {
     let currDirPathGroup: string[], createDirPromises: Promise<void>[];
@@ -151,16 +136,26 @@ async function createTestDirs(dirPaths: string[]) {
     for(let k = 0; k < currDirPathGroup.length; ++k) {
       let currPath: string, currCreateDirPromise: Promise<void>;
       currPath = currDirPathGroup[k];
+
+      while(runningMkdirs >= MAX_ASYNC_MKDIRS) {
+        await sleep();
+      }
+      runningMkdirs++;
       currCreateDirPromise = ENABLE_DISK_WRITES
-        ? mkdir(currPath)
+        ? getMkdirPromise(currPath)
         : Promise.resolve()
       ;
       currCreateDirPromise.then(() => {
+        runningMkdirs--;
+      });
+
+      currCreateDirPromise = currCreateDirPromise.then(() => {
         doneCount++;
         if((doneCount % dirModBy) === 0) {
           process.stdout.write('|');
         }
       });
+      // await currCreateDirPromise;
       createDirPromises.push(currCreateDirPromise);
     }
     await Promise.all(createDirPromises);
@@ -170,9 +165,10 @@ async function createTestDirs(dirPaths: string[]) {
   console.log(`async createTestDirs took: ${getIntuitiveTimeString(deltaMs)}`);
 }
 
-function groupDirsByDepth(dirPaths: string[]): Record<number, string[]> {
-  let groupedDirPaths: Record<number, string[]>;
-  groupedDirPaths = dirPaths.reduce((acc, dirPath) => {
+function groupDirsByDepth(dirPaths: string[]): string[][] {
+  let groupedDirPathsMap: Record<number, string[]>, groupedDirPaths: [ number, string[] ][];
+  let dirPathGroups: string[][];
+  groupedDirPathsMap = dirPaths.reduce((acc, dirPath) => {
     let splat: string[];
     splat = dirPath.split(path.sep);
     if(acc[splat.length] === undefined) {
@@ -181,7 +177,31 @@ function groupDirsByDepth(dirPaths: string[]): Record<number, string[]> {
     acc[splat.length].push(dirPath);
     return acc;
   }, {} as Record<number, string[]>);
-  return groupedDirPaths;
+  groupedDirPaths = Object.keys(groupedDirPathsMap).reduce((acc, curr: string) => {
+    let currLen: number;
+    currLen = +curr;
+    acc.push([
+      +currLen,
+      groupedDirPathsMap[currLen]
+    ]);
+    return acc;
+  }, []);
+  groupedDirPaths.sort((a, b) => {
+    let aLen: number, bLen: number;
+    aLen = a[0];
+    bLen = b[0];
+    if(aLen > bLen) {
+      return 1;
+    }
+    if(aLen < bLen) {
+      return -1;
+    }
+    return 0;
+  });
+  dirPathGroups = groupedDirPaths.map(groupedDirs => {
+    return groupedDirs[1];
+  });
+  return dirPathGroups;
 }
 
 function generateFilePaths(dirPaths: string[], totalFiles: number): string[] {
@@ -269,42 +289,4 @@ async function createTestDirRoot(rootDir: string): Promise<string> {
     await mkdir(testDirPath);
   }
   return testDirPath;
-}
-
-async function fastDeleteDir(rootDir: string): Promise<void> {
-  let timer: Timer, deltaMs: number;
-  let dirs: string[], filePaths: string[], runningFileRms: number;
-  let walkDirResult: WalkDirResult;
-  timer = Timer.start();
-
-  walkDirResult = await walkDir(rootDir, () => undefined);
-  dirs = walkDirResult.dirs;
-  filePaths = walkDirResult.paths;
-  runningFileRms = 0;
-  for(let i = 0; i < filePaths.length; ++i) {
-    let currFilePath: string, filePathRmPromise: Promise<void>;
-    while(runningFileRms > MAX_ASYNC_FILEWRITES) {
-      await sleep();
-    }
-    currFilePath = filePaths[i];
-    runningFileRms++;
-    filePathRmPromise = rm(currFilePath);
-    filePathRmPromise.then(() => {
-      runningFileRms--;
-    }).catch(e => {
-      console.error(e);
-    });
-  }
-  while(runningFileRms > 0) {
-    await sleep(10);
-  }
-  // for(let i = 0; i < dirs.length; ++i) {
-  //   let currDirPath: string, dirPathRmPromise: Promise<void>;
-  //   currDirPath = dirs[i];
-  //   dirPathRmPromise = rm(currDirPath);
-  // }
-  
-  deltaMs = timer.stop();
-  console.log(`fastDeleteDir took: ${getIntuitiveTimeString(deltaMs)}`);
-
 }

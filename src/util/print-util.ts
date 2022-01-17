@@ -29,10 +29,10 @@ export function getIntuitiveBytes(bytes: number): [ number, string ] {
   return bytesTuple;
 }
 
-export function getIntuitiveByteString(ms: number): string {
+export function getIntuitiveByteString(ms: number, toFixedVal = 3): string {
   let bytesTuple: [ number, string ];
   bytesTuple = getIntuitiveBytes(ms);
-  return `${bytesTuple[0].toFixed(3)} ${bytesTuple[1]}`;
+  return `${bytesTuple[0].toFixed(toFixedVal)} ${bytesTuple[1]}`;
 }
 
 export function getIntuitiveTime(ms: number): [ number, string ] {

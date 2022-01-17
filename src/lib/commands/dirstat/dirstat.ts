@@ -7,7 +7,7 @@ import { PathTree } from './path-tree';
 
 export async function executeDirstat(ezdArgs: EzdArgs) {
   let rootDir: string, doGenerate: boolean;
-  let dirstatScanResult: DirstatScanResult, pathTree: PathTree;
+
   rootDir = path.resolve(ezdArgs.DIRSTAT.argParams);
   doGenerate = ezdArgs.GENERATE_TEST_FILES !== undefined;
   if(doGenerate) {
@@ -15,13 +15,5 @@ export async function executeDirstat(ezdArgs: EzdArgs) {
     return;
   }
 
-  dirstatScanResult = await dirstatScan(rootDir);
-  pathTree = dirstatScanResult.pathTree;
-  pathTree.traverse((pathNode, soFar) => {
-    let soFarDirNames: string[];
-    soFarDirNames = soFar.map(pathNode => {
-      return path.parse(pathNode.basePath).name;
-    });
-    // console.log(soFarDirNames.join(path.sep));
-  });
+  await dirstatScan(rootDir);
 }

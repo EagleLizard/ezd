@@ -14,8 +14,8 @@ const LOG_DIR_PATH = `${BASE_DIR}${path.sep}${LOG_DIRNAME}`;
 const MEM_LOG_FILE_NAME = 'mem.log';
 const MEM_LOG_FILE_PATH = `${LOG_DIR_PATH}${path.sep}${MEM_LOG_FILE_NAME}`;
 
-const LOG_INTERVAL_MS = 200;
-const MEM_SAMPLE_INTERVAL_MS = 50;
+const MEM_SAMPLE_INTERVAL_MS = 100;
+const MEM_SAMPLE_MS = 10;
 
 interface MemSample {
   rss: number;
@@ -23,15 +23,20 @@ interface MemSample {
   heapTotal: number;
 }
 
-interface IntervalMemSamples {
-  avg: MemSample[],
-  min: MemSample[],
-  max: MemSample[],
+interface IntervalMemSample {
+  avg: number,
+  min: number,
+  max: number,
 }
 
 export class MemLogger {
   private memSamples: MemSample[];
-  private intervalMemSamples: IntervalMemSamples[];
+  private intervalMemSamples: {
+    rss: IntervalMemSample[],
+    heapUsed: IntervalMemSample[],
+    heapTotal: IntervalMemSample[],
+  };
+  private numMemSamples: number;
 
   private doLog: boolean;
   private writeStream: WriteStream;
@@ -39,10 +44,19 @@ export class MemLogger {
   private constructor(writeStream: WriteStream) {
     this.doLog = true;
     this.memSamples = [];
-    this.intervalMemSamples = [];
+    this.numMemSamples = 0;
+    this.intervalMemSamples = {
+      rss: [],
+      heapUsed: [],
+      heapTotal: [],
+    };
     this.writeStream = writeStream;
+
+    this.writeLine('');
     this.writeLine('start');
+    this.writeLine('');
     this.initLogger();
+
     this.initMemSample();
   }
 
@@ -53,7 +67,7 @@ export class MemLogger {
       await mkdir(LOG_DIR_PATH);
     }
     writeStream = createWriteStream(MEM_LOG_FILE_PATH, {
-      // flags: 'a',
+      flags: 'a',
     });
     await new Promise<void>((resolve, reject) => {
       writeStream.once('ready', () => {
@@ -74,7 +88,7 @@ export class MemLogger {
   }
 
   private initLogger() {
-    const printMemSample = () => {
+    const collectMemSample = () => {
       let memSample: MemSample;
       let numSamples: number;
 
@@ -122,27 +136,32 @@ export class MemLogger {
       rssAvg = Math.round(rssSum / numSamples);
       heapUsedAvg = Math.round(heapUsedSum / numSamples);
       heapTotalAvg = Math.round(heapTotalSum / numSamples);
-      this.writeLine(`rss [avg]: ${getIntuitiveByteString(rssAvg)}`);
-      this.writeLine(`heapUsed [avg]: ${getIntuitiveByteString(heapUsedAvg)}`);
-      this.writeLine(`heapTotal [avg]: ${getIntuitiveByteString(heapTotalAvg)}`);
-
-      this.writeLine(`rss [min, max]: [ ${getIntuitiveByteString(minRss)}, ${getIntuitiveByteString(maxRss)}]`);
-      this.writeLine(`heapUsed [min, max]: [ ${getIntuitiveByteString(minHeapUsed)}, ${getIntuitiveByteString(maxHeapUsed)}]`);
-      this.writeLine(`heapTotal [min, max]: [ ${getIntuitiveByteString(minHeapTotal)}, ${getIntuitiveByteString(maxHeapTotal)}]`);
-
-
-      this.writeLine('');
+      this.intervalMemSamples.rss.push({
+        avg: rssAvg,
+        min: minRss,
+        max: maxRss,
+      });
+      this.intervalMemSamples.heapUsed.push({
+        avg: heapUsedAvg,
+        min: minHeapUsed,
+        max: maxHeapUsed,
+      });
+      this.intervalMemSamples.heapTotal.push({
+        avg: heapTotalAvg,
+        min: minHeapTotal,
+        max: maxHeapTotal,
+      });
     };
-    const logLoop = () => {
+    const memIntervalLoop = () => {
       if(!this.doLog) {
         return;
       }
       setTimeout(() => {
-        printMemSample();
-        logLoop();
-      }, LOG_INTERVAL_MS);
+        collectMemSample();
+        memIntervalLoop();
+      }, MEM_SAMPLE_INTERVAL_MS);
     };
-    logLoop();
+    memIntervalLoop();
 
   }
 
@@ -154,10 +173,11 @@ export class MemLogger {
       if(!this.doLog) {
         return;
       }
-      doSample = memSampleTimer.currentMs() > MEM_SAMPLE_INTERVAL_MS;
+      doSample = memSampleTimer.currentMs() > MEM_SAMPLE_MS;
       if(doSample) {
         const memSample = getMemSample();
         this.memSamples.push(memSample);
+        this.numMemSamples++;
         memSampleTimer.reset();
       }
       setImmediate(() => {
@@ -168,6 +188,27 @@ export class MemLogger {
   }
 
   stop() {
+    let rssStats: IntervalMemSample, heapUsedStats: IntervalMemSample,
+      heapTotalStats: IntervalMemSample;
+    rssStats = getIntervalMemSampleStats(this.intervalMemSamples.rss);
+    heapUsedStats = getIntervalMemSampleStats(this.intervalMemSamples.heapUsed);
+    heapTotalStats = getIntervalMemSampleStats(this.intervalMemSamples.heapTotal);
+    this.writeLine('--rss--');
+    this.writeLine(`rss [max] ${getIntuitiveByteString(rssStats.max)}`);
+    // this.writeLine(`rss [min] ${getIntuitiveByteString(rssStats.min)}`);
+    this.writeLine(`rss [avg] ${getIntuitiveByteString(rssStats.avg)}`);
+    this.writeLine('--heapUsed--');
+    this.writeLine(`heapUsed [max] ${getIntuitiveByteString(heapUsedStats.max)}`);
+    // this.writeLine(`heapUsed [min] ${getIntuitiveByteString(heapUsedStats.min)}`);
+    this.writeLine(`heapUsed [avg] ${getIntuitiveByteString(heapUsedStats.avg)}`);
+    this.writeLine('--heapTotal--');
+    this.writeLine(`heapTotal [max] ${getIntuitiveByteString(heapTotalStats.max)}`);
+    // this.writeLine(`heapTotal [min] ${getIntuitiveByteString(heapTotalStats.min)}`);
+    this.writeLine(`heapTotal [avg] ${getIntuitiveByteString(heapTotalStats.avg)}`);
+    this.writeLine('');
+    this.writeLine(`numMemSamples: ${this.numMemSamples.toLocaleString()}`);
+    this.writeLine('stop');
+    this.writeLine('');
     this.doLog = false;
   }
 }
@@ -179,4 +220,28 @@ function getMemSample(): MemSample {
     heapUsed: memUsage.heapUsed,
     heapTotal: memUsage.heapTotal,
   };
+}
+
+function getIntervalMemSampleStats(intervalMemSamples: IntervalMemSample[]): IntervalMemSample {
+  let memSampleStats: IntervalMemSample;
+  let avgSum: number, avg: number, min: number, max: number;
+  avgSum = 0;
+  min = Infinity;
+  max = -1;
+  intervalMemSamples.forEach(intervalMemSample => {
+    avgSum += intervalMemSample.avg;
+    if(intervalMemSample.min < min) {
+      min = intervalMemSample.min;
+    }
+    if(intervalMemSample.max > max) {
+      max = intervalMemSample.max;
+    }
+  });
+  avg = Math.round(avgSum / intervalMemSamples.length);
+  memSampleStats = {
+    avg,
+    min,
+    max,
+  };
+  return memSampleStats;
 }

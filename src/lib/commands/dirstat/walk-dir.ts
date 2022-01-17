@@ -7,7 +7,7 @@ export interface WalkDirResult {
   dirs: string[];
 }
 
-export function walkDir(dir: string, fileCb: (path: string) => void): Promise<WalkDirResult> {
+export function walkDir(dir: string, fileCb?: (path: string) => void): Promise<WalkDirResult> {
   return new Promise((resolve, reject) => {
     let paths: string[], dirs: string[];
     let cursor: number, readCount: number;
@@ -36,7 +36,7 @@ export function walkDir(dir: string, fileCb: (path: string) => void): Promise<Wa
               dirs.push(fullPath);
             } else {
               paths.push(fullPath);
-              fileCb(fullPath);
+              fileCb?.(fullPath);
             }
           }
 
