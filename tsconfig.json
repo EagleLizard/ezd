@@ -8,10 +8,14 @@
     "sourceMap": true,
     "esModuleInterop": true,
     "declaration": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    // "noEmitHelpers": true,
+    // "importHelpers": true
   },
   "include": [
     "index.ts",
+    "copy-templates.ts",
+    "src/util/pool-worker.ts"
   ],
   "exclude": [
     "node_modules",

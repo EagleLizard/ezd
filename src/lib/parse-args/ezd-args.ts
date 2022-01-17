@@ -1,5 +1,6 @@
 
 import { Command } from 'commander';
+import { mkdir } from 'fs/promises';
 import pkg from '../../../package.json';
 import { checkDir, getPathRelativeToCwd } from '../../util/files';
 import { VALID_ARGS } from '../constants';
@@ -12,6 +13,7 @@ export interface EzdArgs extends Partial<Record<VALID_ARGS, EzdArg>> {
   [VALID_ARGS.DEfAULT_DIR]?: EzdArg<string>,
   [VALID_ARGS.INSTALL_DEPENDENCIES]?: EzdArg<string>;
   [VALID_ARGS.REMOVE_DEPENDENCIES]?: EzdArg<string>;
+  [VALID_ARGS.DIRSTAT]?: EzdArg<string>;
 }
 
 export {
@@ -31,22 +33,54 @@ async function parseEzdArgs(argv: string[]) {
     .argument('[file]', 'optional path. If specified this will be used for all path-based commands')
     .option('-i --install-deps [installPath]', 'run npm install at path, or current working directory')
     .option('-r --remove-deps [removePath]', 'remove package-lock and node_modules at path')
+    .action(async (rawDirPath: unknown, options: Record<string, unknown>) => {
+      let rawInstallDirPath: unknown, rawRemoveDepsDirPath: unknown;
+      rawInstallDirPath = options?.installDeps;
+      rawRemoveDepsDirPath = options?.removeDeps;
+      if(rawDirPath !== undefined) {
+        await parseDefaultDirArg(rawDirPath, ezdArgs);
+      }
+      if(rawInstallDirPath !== undefined) {
+        await parseInstallsDepsArg(rawInstallDirPath, ezdArgs);
+      }
+      if(rawRemoveDepsDirPath !== undefined) {
+        await parseRemoveDepsArg(rawRemoveDepsDirPath, ezdArgs);
+      }
+    })
   ;
+  ezdProgram.command('dirstat <rootDir>')
+    .description('Scan a directory and get stats')
+    .option('-gt --generate-test-files')
+    .action(async (rawRootDir: string, options: Record<string, unknown>) => {
+      let rootDir: string, isDir: boolean, generateTestFiles: boolean;
+      rootDir = getPathRelativeToCwd(rawRootDir);
+      isDir = await checkDir(rootDir);
+      generateTestFiles = options.generateTestFiles === true;
+      if(!isDir) {
+        if(!generateTestFiles) {
+          throw new Error(`Pass invalid path to scandir, must be a directory. Received: ${rootDir}`);
+        } else {
+          try {
+            await mkdir(rootDir);
+          } catch(e) {
+            console.error(e);
+            throw new Error(`Could not make test directory: ${rootDir}`);
+          }
+        }
+      }
+      if(options.generateTestFiles === true) {
+        ezdArgs[VALID_ARGS.GENERATE_TEST_FILES] = {
+          argType: VALID_ARGS.GENERATE_TEST_FILES,
+          argParams: rootDir,
+        };
+      }
+      ezdArgs[VALID_ARGS.DIRSTAT] = {
+        argType: VALID_ARGS.DIRSTAT,
+        argParams: rootDir,
+      };
+    });
 
-  ezdProgram.action(async (rawDirPath: unknown, options: Record<string, unknown>) => {
-    let rawInstallDirPath: unknown, rawRemoveDepsDirPath: unknown;
-    rawInstallDirPath = options?.installDeps;
-    rawRemoveDepsDirPath = options?.removeDeps;
-    if(rawDirPath !== undefined) {
-      await parseDefaultDirArg(rawDirPath, ezdArgs);
-    }
-    if(rawInstallDirPath !== undefined) {
-      await parseInstallsDepsArg(rawInstallDirPath, ezdArgs);
-    }
-    if(rawRemoveDepsDirPath !== undefined) {
-      await parseRemoveDepsArg(rawRemoveDepsDirPath, ezdArgs);
-    }
-  });
+  ezdProgram;
 
   await ezdProgram.parseAsync(argv);
   return ezdArgs;

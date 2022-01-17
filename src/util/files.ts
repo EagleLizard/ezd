@@ -6,6 +6,10 @@ import {
 } from 'fs/promises';
 import { Dirent, Stats } from 'fs';
 
+import _rimraf from 'rimraf';
+
+export const BASE_DIR = path.resolve(__dirname, '../../..');
+
 export function getPathRelativeToCwd(filePath: string) {
   let cwd: string;
   let absolutePath: string;
@@ -51,4 +55,15 @@ export async function getDirents(dirPath: string): Promise<Dirent[]> {
     withFileTypes: true,
   });
   return dirents;
+}
+
+export async function rmrf(path: string) {
+  return new Promise<void>((resolve, reject) => {
+    _rimraf(path, {}, err => {
+      if(err) {
+        return reject(err);
+      }
+      resolve();
+    });
+  });
 }
