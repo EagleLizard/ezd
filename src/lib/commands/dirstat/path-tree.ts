@@ -1,5 +1,6 @@
 
 import path from 'path';
+import { walkDir, WalkDirResult } from './walk-dir';
 
 export interface PathTreeWalkCbParams {
   pathNode: PathNode;
@@ -9,6 +10,13 @@ export interface PathTreeWalkCbParams {
 export interface PathNodeFile {
   name: string;
   size?: number;
+}
+
+export interface PathTreeResult {
+  walkDirResult: WalkDirResult;
+  pathTree: PathTree;
+  fileCount: number;
+  dirCount: number;
 }
 
 export class PathNode {
@@ -66,7 +74,12 @@ export class PathTree extends PathNode {
   }
 
   walk(cb: (walkParams: PathTreeWalkCbParams) => void) {
-    this._walk2(this, [ this.basePath ], cb);
+    let children: PathNode[];
+    // this._walk2(this, [ this.basePath ], cb);
+    children = Array.from(this.children.values());
+    for(let i = 0; i < children.length; ++i) {
+      this._walk2(children[i], [ ], cb);
+    }
   }
   private _walk2(pathNode: PathNode, pathSoFar: string[], cb: (walkParams: PathTreeWalkCbParams) => void) {
     let children: PathNode[];
@@ -79,4 +92,59 @@ export class PathTree extends PathNode {
       this._walk2(children[i], [ children[i].basePath ], cb);
     }
   }
+
+  static async getPathTree(rootDir: string): Promise<PathTreeResult> {
+    let pathTree: PathTree, walkDirResult: WalkDirResult;
+    let basePath: string;
+    let fileCount: number, dirCount: number;
+    let pathTreeResult: PathTreeResult;
+    console.log(rootDir);
+    pathTree = new PathTree(rootDir);
+    fileCount = 0;
+
+    const walkDirCb = (filePath: string) => {
+      let pathNode: PathNode, pathParts: string[];
+      let fileName: string;
+      pathParts = filePath.split(path.sep);
+      fileName = pathParts[pathParts.length - 1];
+      pathNode = pathTree.getChild(pathParts.slice(0, -1));
+
+      pathNode.files.push({
+        name: fileName
+      });
+      fileCount++;
+    };
+
+    // walkDirResult = await walkDir(rootDir, walkDirCb);
+
+    walkDirResult = await walkDir(rootDir);
+    basePath = commonPathPrefix(walkDirResult.paths);
+    console.log(`basePath: ${basePath}`);
+    walkDirResult.paths.forEach(walkDirCb);
+
+    dirCount = walkDirResult.dirs.length;
+    pathTreeResult = {
+      walkDirResult,
+      pathTree,
+      fileCount,
+      dirCount,
+    };
+    return pathTreeResult;
+  }
+}
+
+function commonPathPrefix(paths: string[]) {
+  let firstParts: string[], lastParts: string[];
+  let i: number;
+  paths = paths.slice().sort();
+  firstParts = paths[0].split(path.sep);
+  lastParts = paths[paths.length - 1].split(path.sep);
+  i = 0;
+  while(
+    (i < firstParts.length)
+    && (firstParts[i] === lastParts[i])
+  ) {
+    ++i;
+  }
+  return firstParts.slice(0, i).join(path.sep);
 }

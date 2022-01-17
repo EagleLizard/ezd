@@ -1,5 +1,6 @@
 
 import { Command } from 'commander';
+import { mkdir } from 'fs/promises';
 import pkg from '../../../package.json';
 import { checkDir, getPathRelativeToCwd } from '../../util/files';
 import { VALID_ARGS } from '../constants';
@@ -51,11 +52,21 @@ async function parseEzdArgs(argv: string[]) {
     .description('Scan a directory and get stats')
     .option('-gt --generate-test-files')
     .action(async (rawRootDir: string, options: Record<string, unknown>) => {
-      let rootDir: string, isDir: boolean;
+      let rootDir: string, isDir: boolean, generateTestFiles: boolean;
       rootDir = getPathRelativeToCwd(rawRootDir);
       isDir = await checkDir(rootDir);
+      generateTestFiles = options.generateTestFiles === true;
       if(!isDir) {
-        throw new Error(`Pass invalid path to scandir, must be a directory. Received: ${rootDir}`);
+        if(!generateTestFiles) {
+          throw new Error(`Pass invalid path to scandir, must be a directory. Received: ${rootDir}`);
+        } else {
+          try {
+            await mkdir(rootDir);
+          } catch(e) {
+            console.error(e);
+            throw new Error(`Could not make test directory: ${rootDir}`);
+          }
+        }
       }
       if(options.generateTestFiles === true) {
         ezdArgs[VALID_ARGS.GENERATE_TEST_FILES] = {
