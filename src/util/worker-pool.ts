@@ -3,8 +3,11 @@ import workerpool from 'workerpool';
 import os from 'os';
 
 const NUM_CPUS = os.cpus().length;
-const MAX_WORKERS = NUM_CPUS - 1;
 // const MAX_WORKERS = NUM_CPUS * 2;
+// const MAX_WORKERS = NUM_CPUS - 1;
+// const MAX_WORKERS = Math.ceil(NUM_CPUS / Math.E);
+const MAX_WORKERS = Math.ceil(NUM_CPUS / Math.LOG2E);
+// const MAX_WORKERS = 1;
 
 export {
   MAX_WORKERS,

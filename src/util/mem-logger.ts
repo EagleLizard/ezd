@@ -7,6 +7,8 @@ import { DateTime } from 'luxon';
 
 import { LOG_DIRNAME } from '../lib/constants';
 import { BASE_DIR, checkDir } from './files';
+import { MAX_WORKERS } from './worker-pool';
+
 import { Timer } from './timer';
 import { getIntuitiveByteString } from './print-util';
 
@@ -54,6 +56,7 @@ export class MemLogger {
 
     this.writeLine('');
     this.writeLine('start');
+    this.writeLine(`MAX_WORKERS: ${MAX_WORKERS}`);
     this.writeLine('');
     this.initLogger();
 

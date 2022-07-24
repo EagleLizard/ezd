@@ -89,7 +89,9 @@ export class PathTree extends PathNode {
     });
     children = Array.from(pathNode.children.values());
     for(let i = 0; i < children.length; ++i) {
-      this._walk2(children[i], [ children[i].basePath ], cb);
+      this._walk2(children[i], [
+        children[i].basePath
+      ], cb);
     }
   }
 

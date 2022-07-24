@@ -6,6 +6,7 @@ import workerpool from 'workerpool';
 const STAT_SKIP_ERR_CODES = [
   'ENOENT',
   'EPERM',
+  'EACCES',
 ];
 
 workerpool.worker({
