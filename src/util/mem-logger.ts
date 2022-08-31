@@ -55,6 +55,7 @@ export class MemLogger {
     this.writeStream = writeStream;
 
     this.writeLine('');
+    this.writeLine(process.argv.slice(2).join(' '));
     this.writeLine('start');
     this.writeLine(`MAX_WORKERS: ${MAX_WORKERS}`);
     this.writeLine('');

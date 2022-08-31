@@ -14,6 +14,7 @@ export interface EzdArgs extends Partial<Record<VALID_ARGS, EzdArg>> {
   [VALID_ARGS.INSTALL_DEPENDENCIES]?: EzdArg<string>;
   [VALID_ARGS.REMOVE_DEPENDENCIES]?: EzdArg<string>;
   [VALID_ARGS.DIRSTAT]?: EzdArg<string>;
+  [VALID_ARGS.DIRSTAT2]?: EzdArg<string>;
 }
 
 export {
@@ -76,6 +77,21 @@ async function parseEzdArgs(argv: string[]) {
       }
       ezdArgs[VALID_ARGS.DIRSTAT] = {
         argType: VALID_ARGS.DIRSTAT,
+        argParams: rootDir,
+      };
+    });
+  
+  ezdProgram.command('dirstat2 <rootDir>')
+    .description('Scan a directory and get stats')
+    .action(async (rawRootDir: string, options: Record<string, unknown>) => {
+      let rootDir: string, isDir: boolean;
+      rootDir = getPathRelativeToCwd(rawRootDir);
+      isDir = await checkDir(rootDir);
+      if(!isDir) {
+        throw new Error(`Passed invalid path to dirstat2, must be a directory. Received: ${rootDir}`);
+      }
+      ezdArgs[VALID_ARGS.DIRSTAT2] = {
+        argType: VALID_ARGS.DIRSTAT2,
         argParams: rootDir,
       };
     });

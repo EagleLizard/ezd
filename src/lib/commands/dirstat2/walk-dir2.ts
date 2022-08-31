@@ -2,12 +2,21 @@
 import { Dirent, readdir } from 'fs';
 import path from 'path';
 
-export interface WalkDirResult {
+export interface WalkDir2Result {
   paths: string[];
   dirs: string[];
 }
 
-export function walkDir(dir: string, fileCb?: (path: string) => void): Promise<WalkDirResult> {
+export type Walk2CbParams = {
+  isFile: boolean;
+  isDir: boolean;
+  fullPath: string;
+};
+
+export function walkDir2(
+  dir: string,
+  cb?: (walkParams: Walk2CbParams) => void
+): Promise<WalkDir2Result> {
   return new Promise((resolve, reject) => {
     let paths: string[], dirs: string[];
     let cursor: number, readCount: number;
@@ -35,14 +44,22 @@ export function walkDir(dir: string, fileCb?: (path: string) => void): Promise<W
           dirents = dirents ?? [];
           for(let i = 0; i < dirents.length; ++i) {
             let currDirent: Dirent, fullPath: string;
+            let walkParams: Walk2CbParams;
             currDirent = dirents[i];
             fullPath = `${currDir}${path.sep}${currDirent.name}`;
+            walkParams = {
+              fullPath,
+              isDir: false,
+              isFile: false,
+            };
             if(currDirent.isDirectory()) {
               dirs.push(fullPath);
+              walkParams.isDir = true;
             } else {
               paths.push(fullPath);
-              fileCb?.(fullPath);
+              walkParams.isFile = true;
             }
+            cb?.(walkParams);
           }
           if(++readCount === total) {
             if(dirs.length === cursor) {
